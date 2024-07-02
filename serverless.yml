@@ -1,0 +1,54 @@
+# "org" ensures this Service is used with the correct Serverless Framework Access Key.
+org: douglashbr
+# "app" enables Serverless Framework Dashboard features and sharing them with other Services.
+app: app
+service: serverless-fargate
+
+plugins:
+  - serverless-fargate
+
+configValidationMode: error
+
+provider:
+  name: aws
+  region: us-east-1
+  tags:
+    provider: tag
+  ecr:
+    images:
+      # python:
+      #   path: ./
+      #   file: Dockerfile.python
+      # php:
+      #   path: ./
+      #   file: Dockerfile.php
+      node:
+        path: ./
+        file: Dockerfile.node
+
+# plugins:
+#   - ../src
+
+fargate:
+  vpc:
+    securityGroupIds:
+      - sg-0b7e6808ea5620d6d
+    subnetIds:
+      - subnet-0600d95227e525da9
+  tasks:
+    # service-task-1:
+    #   image: python
+    #   service:
+    #     desiredCount: 2
+    #     spot: true
+    #   tags:
+    #     service: tag
+    service-task-2:
+      image: node
+    # scheduled-task-1:
+    #   image: php
+    #   schedule: 'rate(1 minute)'
+    #   command:
+    #     - /app/service.php
+    #     - my-scheduled-task
+    #     - 1

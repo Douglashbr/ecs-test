@@ -1,0 +1,424 @@
+{
+  "service": {
+    "service": "serverless-fargate",
+    "serviceObject": {
+      "name": "serverless-fargate"
+    },
+    "provider": {
+      "name": "aws",
+      "region": "us-east-1",
+      "tags": {
+        "provider": "tag"
+      },
+      "ecr": {
+        "images": {
+          "node": {
+            "path": "./",
+            "file": "Dockerfile.node"
+          }
+        }
+      },
+      "stage": "staging",
+      "versionFunctions": true,
+      "compiledCloudFormationTemplate": {
+        "AWSTemplateFormatVersion": "2010-09-09",
+        "Description": "The AWS CloudFormation template for this Serverless application",
+        "Resources": {
+          "ServerlessDeploymentBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+              "BucketEncryption": {
+                "ServerSideEncryptionConfiguration": [
+                  {
+                    "ServerSideEncryptionByDefault": {
+                      "SSEAlgorithm": "AES256"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "ServerlessDeploymentBucketPolicy": {
+            "Type": "AWS::S3::BucketPolicy",
+            "Properties": {
+              "Bucket": {
+                "Ref": "ServerlessDeploymentBucket"
+              },
+              "PolicyDocument": {
+                "Statement": [
+                  {
+                    "Action": "s3:*",
+                    "Effect": "Deny",
+                    "Principal": "*",
+                    "Resource": [
+                      {
+                        "Fn::Join": [
+                          "",
+                          [
+                            "arn:",
+                            {
+                              "Ref": "AWS::Partition"
+                            },
+                            ":s3:::",
+                            {
+                              "Ref": "ServerlessDeploymentBucket"
+                            },
+                            "/*"
+                          ]
+                        ]
+                      },
+                      {
+                        "Fn::Join": [
+                          "",
+                          [
+                            "arn:",
+                            {
+                              "Ref": "AWS::Partition"
+                            },
+                            ":s3:::",
+                            {
+                              "Ref": "ServerlessDeploymentBucket"
+                            }
+                          ]
+                        ]
+                      }
+                    ],
+                    "Condition": {
+                      "Bool": {
+                        "aws:SecureTransport": false
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "FargateTasksCluster": {
+            "Type": "AWS::ECS::Cluster",
+            "Properties": {
+              "CapacityProviders": [
+                "FARGATE",
+                "FARGATE_SPOT"
+              ],
+              "Tags": [
+                {
+                  "Key": "provider",
+                  "Value": "tag"
+                }
+              ]
+            }
+          },
+          "FargateTasksLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "Tags": [
+                {
+                  "Key": "provider",
+                  "Value": "tag"
+                }
+              ]
+            }
+          },
+          "FargateIamExecutionRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+              "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Principal": {
+                      "Service": [
+                        "ecs-tasks.amazonaws.com",
+                        "events.amazonaws.com"
+                      ]
+                    },
+                    "Action": [
+                      "sts:AssumeRole"
+                    ]
+                  }
+                ]
+              },
+              "ManagedPolicyArns": [
+                "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy",
+                "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceEventsRole"
+              ],
+              "Tags": [
+                {
+                  "Key": "provider",
+                  "Value": "tag"
+                }
+              ]
+            }
+          },
+          "FargateIamTaskRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+              "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Principal": {
+                      "Service": [
+                        "ecs-tasks.amazonaws.com"
+                      ]
+                    },
+                    "Action": [
+                      "sts:AssumeRole"
+                    ]
+                  }
+                ]
+              },
+              "Policies": [],
+              "ManagedPolicyArns": [],
+              "Tags": [
+                {
+                  "Key": "provider",
+                  "Value": "tag"
+                }
+              ]
+            }
+          },
+          "Servicetask2Task": {
+            "Type": "AWS::ECS::TaskDefinition",
+            "Properties": {
+              "ContainerDefinitions": [
+                {
+                  "Name": "service-task-2",
+                  "Image": "339713158452.dkr.ecr.us-east-1.amazonaws.com/serverless-serverless-fargate-staging@sha256:5fd9efe8113b43133790472a38fdc6450533ff19979228ec5ed57859e6f9ab6a",
+                  "Environment": [],
+                  "EntryPoint": [],
+                  "Command": [],
+                  "LogConfiguration": {
+                    "LogDriver": "awslogs",
+                    "Options": {
+                      "awslogs-region": {
+                        "Fn::Sub": "${AWS::Region}"
+                      },
+                      "awslogs-group": {
+                        "Fn::Sub": "${FargateTasksLogGroup}"
+                      },
+                      "awslogs-stream-prefix": "fargate"
+                    }
+                  }
+                }
+              ],
+              "Family": "service-task-2",
+              "NetworkMode": "awsvpc",
+              "ExecutionRoleArn": {
+                "Fn::Sub": "${FargateIamExecutionRole}"
+              },
+              "TaskRoleArn": {
+                "Fn::Sub": "${FargateIamTaskRole}"
+              },
+              "RequiresCompatibilities": [
+                "FARGATE"
+              ],
+              "Memory": "0.5GB",
+              "Cpu": 256,
+              "Tags": [
+                {
+                  "Key": "provider",
+                  "Value": "tag"
+                }
+              ]
+            }
+          },
+          "Servicetask2Service": {
+            "Type": "AWS::ECS::Service",
+            "Properties": {
+              "Cluster": {
+                "Fn::Sub": "${FargateTasksCluster}"
+              },
+              "ServiceName": "service-task-2",
+              "CapacityProviderStrategy": [
+                {
+                  "CapacityProvider": "FARGATE",
+                  "Weight": 1
+                }
+              ],
+              "DesiredCount": 1,
+              "DeploymentConfiguration": {
+                "MaximumPercent": 200,
+                "MinimumHealthyPercent": 100
+              },
+              "TaskDefinition": {
+                "Fn::Sub": "${Servicetask2Task}"
+              },
+              "NetworkConfiguration": {
+                "AwsvpcConfiguration": {
+                  "AssignPublicIp": "DISABLED",
+                  "SecurityGroups": [
+                    "sg-0b7e6808ea5620d6d"
+                  ],
+                  "Subnets": [
+                    "subnet-0600d95227e525da9"
+                  ]
+                }
+              },
+              "PropagateTags": "TASK_DEFINITION",
+              "Tags": [
+                {
+                  "Key": "provider",
+                  "Value": "tag"
+                }
+              ]
+            }
+          }
+        },
+        "Outputs": {
+          "ServerlessDeploymentBucketName": {
+            "Value": {
+              "Ref": "ServerlessDeploymentBucket"
+            },
+            "Export": {
+              "Name": "sls-serverless-fargate-staging-ServerlessDeploymentBucketName"
+            }
+          },
+          "Servicetask2TaskArn": {
+            "Value": {
+              "Ref": "Servicetask2Task"
+            },
+            "Export": {
+              "Name": "sls-serverless-fargate-staging-Servicetask2TaskArn"
+            }
+          },
+          "Servicetask2ServiceArn": {
+            "Value": {
+              "Ref": "Servicetask2Service"
+            },
+            "Export": {
+              "Name": "sls-serverless-fargate-staging-Servicetask2ServiceArn"
+            }
+          }
+        }
+      },
+      "coreCloudFormationTemplate": {
+        "AWSTemplateFormatVersion": "2010-09-09",
+        "Description": "The AWS CloudFormation template for this Serverless application",
+        "Resources": {
+          "ServerlessDeploymentBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+              "BucketEncryption": {
+                "ServerSideEncryptionConfiguration": [
+                  {
+                    "ServerSideEncryptionByDefault": {
+                      "SSEAlgorithm": "AES256"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "ServerlessDeploymentBucketPolicy": {
+            "Type": "AWS::S3::BucketPolicy",
+            "Properties": {
+              "Bucket": {
+                "Ref": "ServerlessDeploymentBucket"
+              },
+              "PolicyDocument": {
+                "Statement": [
+                  {
+                    "Action": "s3:*",
+                    "Effect": "Deny",
+                    "Principal": "*",
+                    "Resource": [
+                      {
+                        "Fn::Join": [
+                          "",
+                          [
+                            "arn:",
+                            {
+                              "Ref": "AWS::Partition"
+                            },
+                            ":s3:::",
+                            {
+                              "Ref": "ServerlessDeploymentBucket"
+                            },
+                            "/*"
+                          ]
+                        ]
+                      },
+                      {
+                        "Fn::Join": [
+                          "",
+                          [
+                            "arn:",
+                            {
+                              "Ref": "AWS::Partition"
+                            },
+                            ":s3:::",
+                            {
+                              "Ref": "ServerlessDeploymentBucket"
+                            }
+                          ]
+                        ]
+                      }
+                    ],
+                    "Condition": {
+                      "Bool": {
+                        "aws:SecureTransport": false
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "Outputs": {
+          "ServerlessDeploymentBucketName": {
+            "Value": {
+              "Ref": "ServerlessDeploymentBucket"
+            }
+          }
+        }
+      }
+    },
+    "plugins": [
+      "serverless-fargate"
+    ],
+    "pluginsData": {},
+    "functions": {},
+    "configValidationMode": "error",
+    "serviceFilename": "serverless.yml",
+    "initialServerlessConfig": {
+      "org": "douglashbr",
+      "app": "app",
+      "service": "serverless-fargate",
+      "plugins": {
+        "$ref": "$[\"service\"][\"plugins\"]"
+      },
+      "configValidationMode": "error",
+      "provider": {
+        "$ref": "$[\"service\"][\"provider\"]"
+      },
+      "fargate": {
+        "vpc": {
+          "securityGroupIds": {
+            "$ref": "$[\"service\"][\"provider\"][\"compiledCloudFormationTemplate\"][\"Resources\"][\"Servicetask2Service\"][\"Properties\"][\"NetworkConfiguration\"][\"AwsvpcConfiguration\"][\"SecurityGroups\"]"
+          },
+          "subnetIds": {
+            "$ref": "$[\"service\"][\"provider\"][\"compiledCloudFormationTemplate\"][\"Resources\"][\"Servicetask2Service\"][\"Properties\"][\"NetworkConfiguration\"][\"AwsvpcConfiguration\"][\"Subnets\"]"
+          }
+        },
+        "tasks": {
+          "service-task-2": {
+            "image": "node"
+          }
+        }
+      }
+    },
+    "app": "app",
+    "appId": null,
+    "org": "douglashbr",
+    "orgId": null,
+    "layers": {}
+  },
+  "package": {
+    "artifactDirectoryName": "serverless/serverless-fargate/staging/1719165591821-2024-06-23T17:59:51.821Z",
+    "artifact": ""
+  }
+}
